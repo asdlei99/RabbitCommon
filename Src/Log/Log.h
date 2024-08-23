@@ -50,6 +50,7 @@ private:
     QString m_szConfigureFile;
 
     QString m_szPath;
+    QString m_szName;
     QString m_szFileFormat;
     QFile m_File;
     QMutex m_Mutex;
@@ -67,6 +68,8 @@ private:
     bool checkFileLength();
     QString getFileName();
     QString getNextFileName(const QString szFile);
+    QString getBaseName();
+
 private Q_SLOTS:
     void slotTimeout();
 };

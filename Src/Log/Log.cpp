@@ -36,6 +36,7 @@ QRegularExpression g_reInclude;
 QRegularExpression g_reExclude;
 
 CLog::CLog() : QObject(),
+    m_szName(QCoreApplication::applicationName()),
     m_szFileFormat("yyyy-MM-dd"),
     m_nLength(0),
     m_nCount(0)
@@ -73,7 +74,8 @@ CLog::CLog() : QObject(),
         QSettings setConfig(m_szConfigureFile, QSettings::IniFormat);
         setConfig.beginGroup("Log");
         m_szPath = setConfig.value("Path", m_szPath).toString();
-        m_szFileFormat = setConfig.value("Name", m_szFileFormat).toString();
+        m_szName = setConfig.value("Name", m_szName).toString();
+        m_szFileFormat = setConfig.value("DateFormat", m_szFileFormat).toString();
         szPattern = setConfig.value("Pattern", szPattern).toString();
         nInterval = setConfig.value("Interval", nInterval).toUInt();
         m_nCount = setConfig.value("Count", 0).toULongLong();
@@ -118,6 +120,7 @@ CLog::CLog() : QObject(),
 
     qDebug(Logger) << "Log configure:"
                    << "\n    Path:" << m_szPath
+                   << "\n    Name:" << m_szName
                    << "\n    FileNameFormat:" << m_szFileFormat
                    << "\n    szPattern:" << szPattern
                    << "\n    Interval:" << nInterval
@@ -326,6 +329,15 @@ void CLog::checkFileCount()
     }
 }
 
+QString CLog::getBaseName()
+{
+    QString szSep("_");
+    return m_szName + szSep
+           + QString::number(QCoreApplication::applicationPid()) + szSep
+           + QDate::currentDate().toString(m_szFileFormat)
+           ;
+}
+
 QString CLog::getFileName()
 {
     QChar fill('0');
@@ -337,8 +349,8 @@ QString CLog::getFileName()
 
     szFile = m_File.fileName();
     if(!szFile.isEmpty()) return szFile;
-
-    szName = QDate::currentDate().toString(m_szFileFormat);
+    
+    szName = getBaseName();
     d.setNameFilters(QStringList() << szName + "*");
     auto lstFiles = d.entryInfoList(QDir::Files, QDir::Name);
     //qDebug(Logger) << "Log files:" << lstFiles;
@@ -362,21 +374,13 @@ QString CLog::getNextFileName(const QString szFile)
     QString szName = fi.baseName();
 
     auto s = szName.split(szSep);
-    if(s.size() > 0
-            && QDate::currentDate().toString(m_szFileFormat) == s[0])
+    if(s.size() > 0)
     {
-        if(s.size() == 2) {
-            szNo = s[1];
-            szNo = QString("%1").arg(szNo.toInt() + 1, 4, 10, fill);
-        }
-
-        szName = s[0];
-    } else {
-        szName = QDate::currentDate().toString(m_szFileFormat);
+        szNo = s[s.size() - 1];
+        szNo = QString("%1").arg(szNo.toInt() + 1, 4, 10, fill);
     }
 
-    szName += szSep + szNo;
-    return m_szPath + QDir::separator() + szName + ".log";
+    return m_szPath + QDir::separator() + getBaseName() +szSep + szNo + ".log";
 }
 
 bool CLog::checkFileLength()
